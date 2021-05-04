@@ -82,6 +82,19 @@ pipeline {
           }
         }
      }
+     stage('Test Staging deployment') {
+       when {
+              expression { GIT_BRANCH == 'origin/master' }
+            }
+           agent any
+           steps {
+              script {
+                sh '''
+                    curl https://${STAGING}.herokuapp.com | grep -q "Hello world"
+                '''
+              }
+           }
+      }
      stage('Push image in production and deploy it') {
        when {
               expression { GIT_BRANCH == 'origin/master' }
@@ -101,5 +114,18 @@ pipeline {
           }
         }
      }
+     stage('Test Prod deployment') {
+       when {
+              expression { GIT_BRANCH == 'origin/master' }
+            }
+           agent any
+           steps {
+              script {
+                sh '''
+                    curl https://${PRODUCTION}.herokuapp.com | grep -q "Hello world"
+                '''
+              }
+           }
+      }
   }
 }
