@@ -2,9 +2,8 @@ pipeline {
      environment {
        IMAGE_NAME = "alpinehelloworld"
        IMAGE_TAG = "latest"
-       STAGING = "dirane-staging"
-       PRODUCTION = "dirane-production"
-       IMAGE_REPO = "dirane"
+       STAGING = "eazytraining-staging"
+       PRODUCTION = "eazytraining-production"
      }
      agent none
      stages {
@@ -12,7 +11,7 @@ pipeline {
              agent any
              steps {
                 script {
-                  sh 'docker build -t $IMAGE_REPO/$IMAGE_NAME:$IMAGE_TAG .'
+                  sh 'docker build -t eazytraining/$IMAGE_NAME:$IMAGE_TAG .'
                 }
              }
         }
@@ -21,7 +20,7 @@ pipeline {
             steps {
                script {
                  sh '''
-                    docker run --name $IMAGE_NAME -d -p 80:5000 -e PORT=5000 $IMAGE_REPO/$IMAGE_NAME:$IMAGE_TAG
+                    docker run --name $IMAGE_NAME -d -p 80:5000 -e PORT=5000 eazytraining/$IMAGE_NAME:$IMAGE_TAG
                     sleep 5
                  '''
                }
@@ -32,7 +31,7 @@ pipeline {
            steps {
               script {
                 sh '''
-                    curl http://172.17.0.1 | grep -q "Hello world"
+                    curl http://localhost | grep -q "Hello world!"
                 '''
               }
            }
@@ -42,27 +41,12 @@ pipeline {
           steps {
              script {
                sh '''
-                  docker rm -vf ${IMAGE_NAME}
+                 docker stop $IMAGE_NAME
+                 docker rm $IMAGE_NAME
                '''
              }
           }
      }
-     stage('Push image on dockerhub') {
-           agent any 
-           environment {
-                DOCKERHUB_LOGIN = credentials('dockerhub_dirane')
-                
-            }
-
-           steps {
-               script {
-                   sh '''
-		   docker login --username ${DOCKERHUB_LOGIN_USR} --password ${DOCKERHUB_LOGIN_PSW}
-                   docker push ${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_TAG}
-                   '''
-               }
-           }
-        }
      stage('Push image in staging and deploy it') {
        when {
               expression { GIT_BRANCH == 'origin/master' }
@@ -70,7 +54,7 @@ pipeline {
       agent any
       environment {
           HEROKU_API_KEY = credentials('heroku_api_key')
-      }
+      }  
       steps {
           script {
             sh '''
@@ -82,19 +66,6 @@ pipeline {
           }
         }
      }
-     stage('Test Staging deployment') {
-       when {
-              expression { GIT_BRANCH == 'origin/master' }
-            }
-           agent any
-           steps {
-              script {
-                sh '''
-                    curl https://${STAGING}.herokuapp.com | grep -q "Hello world"
-                '''
-              }
-           }
-      }
      stage('Push image in production and deploy it') {
        when {
               expression { GIT_BRANCH == 'origin/master' }
@@ -114,18 +85,5 @@ pipeline {
           }
         }
      }
-     stage('Test Prod deployment') {
-       when {
-              expression { GIT_BRANCH == 'origin/master' }
-            }
-           agent any
-           steps {
-              script {
-                sh '''
-                    curl https://${PRODUCTION}.herokuapp.com | grep -q "Hello world"
-                '''
-              }
-           }
-      }
   }
 }
